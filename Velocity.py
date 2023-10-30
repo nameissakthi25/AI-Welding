@@ -1,6 +1,6 @@
 import cv2
 from ultralytics import YOLO
-import time
+
 # Load the YOLOv8 model
 model = YOLO(r'Bottle\best.pt')
 
@@ -40,6 +40,13 @@ while cap.isOpened():
             # Update the previous bounding box and time for the next iteration
             prev_bbox = bbox
             prev_time = time.time()
+
+            # Draw the bounding box on the frame
+            x1, y1, x2, y2 = map(int, bbox)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+            # Display the annotated frame with the bounding box
+            cv2.imshow("YOLOv8 Tracking", frame)
 
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord("q"):

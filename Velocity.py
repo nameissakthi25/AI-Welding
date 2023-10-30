@@ -44,14 +44,11 @@ while cap.isOpened():
                 if time_elapsed > 0:
                     # Calculate speed in centimeters per second
                     speed = distance / time_elapsed
-                    
-            # Update the previous bounding box and time for the next iteration
-            prev_bbox = bbox
-            prev_time = time.time()
 
-            # Draw the bounding box and display the speed in cm/s
+            # Draw the bounding box
             x1, y1, x2, y2 = map(int, bbox)
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
             if speed > 0:
                 speed_str = f"Speed: {speed:.2f} cm/s"
                 cv2.putText(frame, speed_str, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
@@ -61,6 +58,11 @@ while cap.isOpened():
         # Print the speed to the console
         if speed_str:
             print(speed_str)
+
+        # Update the previous bounding box and time if results are not empty
+        if results and results[0].boxes.id is not None:
+            prev_bbox = bbox
+            prev_time = time.time()
 
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord("q"):

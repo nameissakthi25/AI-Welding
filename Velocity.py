@@ -11,6 +11,7 @@ cap = cv2.VideoCapture(0)
 # Initialize variables to track the previous position and time
 prev_bbox = None
 prev_time = None
+scale_factor = 0.1  # Adjust this based on your scale (centimeters per pixel)
 
 # Loop through the video frames
 while cap.isOpened():
@@ -30,27 +31,31 @@ while cap.isOpened():
 
             if prev_bbox is not None:
                 # Calculate the distance between the current and previous bounding boxes
-                distance = ((bbox[0] - prev_bbox[0])**2 + (bbox[1] - prev_bbox[1])**2)**0.5
+                distance = ((bbox[0] - prev_bbox[0])**2 + (bbox[1] - prev_bbox[1])**2)**0.5 * scale_factor
 
                 # Calculate the time elapsed between frames
                 current_time = time.time()
                 time_elapsed = current_time - prev_time
 
                 if time_elapsed > 0:
-                    # Calculate speed in pixels per second
+                    # Calculate speed in centimeters per second
                     speed = distance / time_elapsed
-
+                    
             # Update the previous bounding box and time for the next iteration
             prev_bbox = bbox
             prev_time = time.time()
 
-            # Draw the bounding box and display the speed
+            # Draw the bounding box and display the speed in cm/s
             x1, y1, x2, y2 = map(int, bbox)
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, f"Speed: {speed:.2f} pixels/second", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            speed_str = f"Speed: {speed:.2f} cm/s"
+            cv2.putText(frame, speed_str, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
-        # Display the annotated frame with the bounding box and speed
-        cv2.imshow("YOLOv8 Tracking", frame)
+            # Display the annotated frame with the bounding box and speed
+            cv2.imshow("YOLOv8 Tracking", frame)
+
+            # Print the speed to the console
+            print(speed_str)
 
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord("q"):

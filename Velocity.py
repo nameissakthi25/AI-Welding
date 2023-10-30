@@ -13,6 +13,9 @@ prev_bbox = None
 prev_time = None
 scale_factor = 0.1  # Adjust this based on your scale (centimeters per pixel)
 
+# Create a named window for displaying the video
+cv2.namedWindow("YOLOv8 Tracking", cv2.WINDOW_NORMAL)
+
 # Loop through the video frames
 while cap.isOpened():
     # Read a frame from the video
@@ -21,6 +24,7 @@ while cap.isOpened():
     if success:
         # Initialize speed
         speed = 0.0
+        speed_str = ""  # Initialize the speed_str variable
 
         # Run YOLOv8 tracking on the frame, persisting tracks between frames
         results = model.track(frame, persist=True)
@@ -48,13 +52,14 @@ while cap.isOpened():
             # Draw the bounding box and display the speed in cm/s
             x1, y1, x2, y2 = map(int, bbox)
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            speed_str = f"Speed: {speed:.2f} cm/s"
-            cv2.putText(frame, speed_str, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            if speed > 0:
+                speed_str = f"Speed: {speed:.2f} cm/s"
+                cv2.putText(frame, speed_str, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
-            # Display the annotated frame with the bounding box and speed
-            cv2.imshow("YOLOv8 Tracking", frame)
+        cv2.imshow("YOLOv8 Tracking", frame)
 
-            # Print the speed to the console
+        # Print the speed to the console
+        if speed_str:
             print(speed_str)
 
         # Break the loop if 'q' is pressed

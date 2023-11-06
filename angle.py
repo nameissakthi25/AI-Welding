@@ -1,21 +1,15 @@
 import cv2
 from ultralytics import YOLO
-import time
 import math
 
 # Load the YOLOv8 model
-model = YOLO(r'Bottle\bottle-100\bottle-100.pt')
+model = YOLO(r'Bottle\bottle-100\b-cap-100-f.pt')
 
-# Open the video file
 cap = cv2.VideoCapture(0)
 
-# Initialize variables to track the previous position, time, and angle
-prev_bbox = None
-prev_time = None
-scale_factor = 0.1  # Adjust this based on your scale (centimeters per pixel)
-
-# Create a named window for displaying the video
-cv2.namedWindow("YOLOv8 Tracking", cv2.WINDOW_NORMAL)
+# Initialize lists to store center points for each class
+class1_center_points = []
+class2_center_points = []
 
 # Loop through the video frames
 while cap.isOpened():
@@ -23,59 +17,50 @@ while cap.isOpened():
     success, frame = cap.read()
 
     if success:
-        # Initialize speed and angle
-        speed = 0.0
-        angle_degrees = 0.0
-        side_angle_str = ""
-        speed_str = ""
-        angle_str = ""
-
         # Run YOLOv8 tracking on the frame, persisting tracks between frames
         results = model.track(frame, persist=True)
 
-        if results and results[0].boxes.id is not None:
-            # Get the bounding box of the first detected object
-            bbox = results[0].boxes.xyxy.cpu()[0]
+        # Clear the center point lists for each class in each frame
+        class1_center_points = []
+        class2_center_points = []
 
-            if prev_bbox is not None:
-                distance = ((bbox[0] - prev_bbox[0]) ** 2 + (bbox[1] - prev_bbox[1]) ** 2) ** 0.5 * scale_factor
-                current_time = time.time()
-                time_elapsed = current_time - prev_time
-                if time_elapsed > 0:
-                    speed = distance / time_elapsed
-                # Calculate the angle using the tangent method
-                height = bbox[3] - bbox[1]  # Vertical difference
-                width = bbox[2] - bbox[0]  # Horizontal difference
-                if width != 0:  # Avoid division by zero
-                    angle = math.degrees(math.atan(height / width))
-                    angle_degrees = max(0, min(90, angle))
-                
-                # Determine if the object is tilted left or right
-                if width > height:
-                    side_angle_str = f"Right side angle: {angle_degrees:.2f} degrees"
-                else:
-                    side_angle_str = f"Left side angle: {angle_degrees:.2f} degrees"
+        for det in results[0].boxes.xyxy:
+            print(det)
+            # Get the class label and bounding box coordinates
+            x1, y1, x2, y2 = det[:4]
 
-            x1, y1, x2, y2 = map(int, bbox)
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            if speed > 0:
-                speed_str = f"Speed: {speed:.2f} cm/s"
-                cv2.putText(frame, speed_str, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-                
-            if side_angle_str:
-                cv2.putText(frame, side_angle_str, (x1, y1 - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            # Calculate the center point
+            center_x = int((x1 + x2) / 2)
+            center_y = int((y1 + y2) / 2)
+            label = results[0].names
+            print('Label',type(label.keys()))
+            if len(label.keys())>1:
+                # Class 1
+                print('Truee')
+                class1_center_points.append((center_x, center_y))
+                class2_center_points.append((center_x, center_y))
 
-        cv2.imshow("YOLOv8 Tracking", frame)
+        # Draw lines between center points if both classes are detected
+        if len(class1_center_points) > 0 and len(class2_center_points) > 0:
+            for center1 in class1_center_points:
+                for center2 in class2_center_points:
+                    cv2.line(frame, center1, center2, (0, 0, 255), 2)  # Red line
 
-        if speed_str:
-            print(speed_str)
-        if side_angle_str:
-            print(side_angle_str)
+                    # Calculate the angle between the two points
+                    delta_x = center2[0] - center1[0]
+                    delta_y = center2[1] - center1[1]
+                    angle = math.degrees(math.atan2(delta_y, delta_x))
 
-        if results and results[0].boxes.id is not None:
-            prev_bbox = bbox
-            prev_time = time.time()
+                    # Print the angle
+                    print(f"Angle between the two points: {angle} degrees")
 
+        # Visualize the results on the frame
+        annotated_frame = results[0].plot()
+
+        # Display the annotated frame
+        cv2.imshow("YOLOv8 Tracking", annotated_frame)
+
+        # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
     else:

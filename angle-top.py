@@ -1,21 +1,11 @@
 import cv2
 from ultralytics import YOLO
-import time
-import math
 
 # Load the YOLOv8 model
-model = YOLO(r'Bottle\bottle-100\bottle-100.pt')
+model = YOLO(r'Bottle\bottle-100\b-cap-200-best.pt')
 
-# Open the video file
+
 cap = cv2.VideoCapture(0)
-
-# Initialize variables to track the previous position and time
-prev_bbox = None
-prev_time = None
-scale_factor = 0.1  # Adjust this based on your scale (centimeters per pixel)
-
-# Create a named window for displaying the video
-cv2.namedWindow("YOLOv8 Tracking", cv2.WINDOW_NORMAL)
 
 # Loop through the video frames
 while cap.isOpened():
@@ -23,57 +13,27 @@ while cap.isOpened():
     success, frame = cap.read()
 
     if success:
-        # Initialize speed and angle
-        speed = 0.0
-        angle_degrees = 0.0
-        side_angle_str = ""
-        speed_str = ""
-        angle_str = ""
-
         # Run YOLOv8 tracking on the frame, persisting tracks between frames
         results = model.track(frame, persist=True)
 
-        if results and results[0].boxes.id is not None:
-            # Get the bounding box of the first detected object
-            bbox = results[0].boxes.xyxy.cpu()[0]
+        for det in results[0].boxes.xyxy:
+            # Get the bounding box coordinates
+            x1, y1, x2, y2 = det[:4]
 
-            if prev_bbox is not None:
-                distance = ((bbox[0] - prev_bbox[0]) ** 2 + (bbox[1] - prev_bbox[1]) ** 2) ** 0.5 * scale_factor
-                current_time = time.time()
-                time_elapsed = current_time - prev_time
-                if time_elapsed > 0:
-                    speed = distance / time_elapsed
+            # Calculate the center point
+            center_x = int((x1 + x2) / 2)
+            center_y = int((y1 + y2) / 2)
 
-                # Calculate the angle based on the vertical axis
-                vertical_angle = math.degrees(math.atan2(bbox[3] - bbox[1], bbox[0] - bbox[2]))
-                angle_degrees = abs(vertical_angle - 90)  # Convert to degrees and adjust for reference axis
+            # Draw a point at the center
+            cv2.circle(frame, (center_x, center_y), 5, (0, 0, 255), -1)  # Red point
 
-                # Determine if the object is tilted left or right
-                if vertical_angle > 90:
-                    side_angle_str = f"Right side angle: {angle_degrees:.2f} degrees"
-                else:
-                    side_angle_str = f"Left side angle: {angle_degrees:.2f} degrees"
+        # Visualize the results on the frame
+        annotated_frame = results[0].plot()
 
-            x1, y1, x2, y2 = map(int, bbox)
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            if speed > 0:
-                speed_str = f"Speed: {speed:.2f} cm/s"
-                cv2.putText(frame, speed_str, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        # Display the annotated frame
+        cv2.imshow("YOLOv8 Tracking", annotated_frame)
 
-            if side_angle_str:
-                cv2.putText(frame, side_angle_str, (x1, y1 - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
-        cv2.imshow("YOLOv8 Tracking", frame)
-
-        if speed_str:
-            print(speed_str)
-        if side_angle_str:
-            print(side_angle_str)
-
-        if results and results[0].boxes.id is not None:
-            prev_bbox = bbox
-            prev_time = time.time()
-
+        # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
     else:

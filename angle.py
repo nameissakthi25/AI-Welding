@@ -3,7 +3,7 @@ from ultralytics import YOLO
 import math
 
 # Load the YOLOv8 model
-model = YOLO(r'Bottle\bottle-100\b-cap-100-f.pt')
+model = YOLO(r'Bottle\bottle-100\final-65best.pt')
 
 cap = cv2.VideoCapture(0)
 
@@ -33,19 +33,22 @@ while cap.isOpened():
             center_x = int((x1 + x2) / 2)
             center_y = int((y1 + y2) / 2)
             label = results[0].names
-            print('Label',type(label.keys()))
+            print('Label',label[0])
+            print('Label',label[1])
             if len(label.keys())>1:
                 # Class 1
                 print('Truee')
-                class1_center_points.append((center_x, center_y))
-                class2_center_points.append((center_x, center_y))
+                if label[0] == 'cap':
+                    class1_center_points.append((center_x, center_y))
+                if label[1] == 'plastic bottle':
+                    class2_center_points.append((center_x, center_y))
+                
 
         # Draw lines between center points if both classes are detected
         if len(class1_center_points) > 0 and len(class2_center_points) > 0:
             for center1 in class1_center_points:
                 for center2 in class2_center_points:
                     cv2.line(frame, center1, center2, (0, 0, 255), 2)  # Red line
-
                     # Calculate the angle between the two points
                     delta_x = center2[0] - center1[0]
                     delta_y = center2[1] - center1[1]
